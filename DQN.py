@@ -108,12 +108,22 @@ if __name__ == "__main__":
             #next_state = np.reshape
             agent.append_sample(state, action, reward, next_state, done)
 
+
+
             if len(agent.memory) >= agent.train_start:
                 agent.train_model()
             score += reward
             state = next_state
             if done:
                 agent.update_target_model()
+                scores.append(score)
+                episodes.append(e) # <-- 이 e가 뭐하는걸까 모르겟음
+                pylab.plot(episodes, scores, 'b')
+                #pylab.savefig("")    <- 그래프 저장 경로 사실 딱히 필요없음 자소서 쓸때 필요하려나
+
+                if np.mean(scores[-min(10, len(scores)):]) > 100: # 이전 에피소드 점수 평균이 100넘으면 탈출 (학습)
+                    #agent.model.save_weights() <-- 이괄호 안에는 학습 데으터를 넣을 경로가 필요한데 아직 못정함
+                    sys.exit()
 
 
 
