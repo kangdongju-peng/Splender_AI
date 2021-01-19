@@ -30,6 +30,8 @@ class DQNAgent:
 
         self.model = self.build_model()
         self.target_model = self.build_model()
+        self.enemy_action
+        self.enemy_state
 
         self.update_target_model()
 
@@ -54,27 +56,29 @@ class DQNAgent:
         else :
             q_value = self.model.predict(state)
             return np.argmax(q_value[0])
+    def get_enemy_action(self, enemy_state):
+        q_value = self.model.predict(enemy_state)
+        return np.argmax(q_value[0])
 
     def append_sample(self, state, action, reward, next_state, done): # 학습샘플을 메모리에 저장하는 함수
         self.memory.append((state,action, reward, next_state, done))
 
     def train_model(self): # 학습시키기
         if self.epsilon > self.epsilon_min:
-            self.epsilon = self.epsilon * self.epsilon_decay요
+            self.epsilon = self.epsilon * self.epsilon_decay
 
         mini_batch = random.sample(self.memory, self.batch_size)
 
-        states = np.zeros((self.batch_size, self.state_size))
+        states = np.zeros((self.batch_size, self.state_size)) # 세로열이 batch_size, state_size 가로열 개수인 0으로 도배된 배열 생성
         next_states = np.zeros((self.batch_size, self.state_size))
 
         actions, rewards, dones = [], [], []
         for i in range(self.batch_size):
             states[i] = mini_batch[i][0]
-            actions.append(mini_batch[i][1])
+            actions.append(mini_batch[i][1])   #모든 변수에 샘플을 정리
             rewards.append(mini_batch[i][2])
             next_states[i] = mini_batch[i][3]
             dones.append(mini_batch[i][4])
-
 
         target = self.model.predict(states)
         target_val = self.target_model.predict(next_states)
@@ -99,15 +103,18 @@ if __name__ == "__main__":
     for e in range(EPISODES):
         done = False
         score = 0
-        state = env.reset() # <-- 지금 함수 없어서 오류 상태 리셋하는 함수 env에 넣어야함
-        state = env.Startset() # <-- 함수없어서 오류남 시작할때 상태를 나타내는거
+        if env.getTurn():
+            state= env.reset()
+            state = env.Startset()
+        else:
+            enemy_state = env.reset()# <-- 지금 함수 없어서 오류 상태 리셋하는 함수 env에 넣어야함
+            enemy_state = env.Startset()# <-- 함수없어서 오류남 시작할때 상태를 나타내는거
 
         while not done:
             action = agent.get_action(state)
             next_state, reward, done, info = env.step(action)  # < -- 없어서 오류남 env에 한 액션을 받고 한 턴을 플레이 하는 함수르 만들기
             #next_state = np.reshape
             agent.append_sample(state, action, reward, next_state, done)
-
 
 
             if len(agent.memory) >= agent.train_start:
