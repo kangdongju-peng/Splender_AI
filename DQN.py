@@ -20,6 +20,7 @@ class DQNAgent:
         self.epsilon_min = 0.01 #탐험률의 최소 값 정의
         self.epsilon_decay = 0.999 # 탐험률의 감소값 일단 0.999로 설정
         self.train_start = 1000
+        self.learning_rate = 0.001
 
         self.state_size = state_size
         self.action_size = action_size
@@ -39,14 +40,19 @@ class DQNAgent:
  #       if self.load_model():
 #          self.model.load_weights("./save_model/cartpole_dqn_trained.h5") ## 일단 책에 중요해 보여서 썼는데, 뭔 코든지 해석좀
 
-    def build_model(self): # 인공신경망 만들어야 하는데, 상의가 필요함
+    def build_agent_model(self): # 인공신경망 만들어야 하는데, 상의가 필요함
         model = Sequential()
+        model.add(Dense(24,input_dim=self.state_size, activation='relu', kernel_initializer='he_uniform'))
+        model.add(Dense(24, activation='relu', kernel_initializer='he_uniform'))
+        model.add(Dense(self.action_size, activation='linear', kernel_initializer='he_uniform'))
+        model.summary()
+        model.compile(loss='mse', optimizer=Adam(lr=self.learning_rate))
         #pass
         return model
 
 
 
-    def update_target_model(self):
+    def update_target_agent_model(self):
         self.target_model.set_weights(self.model.get_weights())
 
 
@@ -113,7 +119,7 @@ if __name__ == "__main__":
         while not done:
             action = agent.get_action(state)
             next_state, reward, done, info = env.step(action)  # < -- 없어서 오류남 env에 한 액션을 받고 한 턴을 플레이 하는 함수르 만들기
-            #next_state = np.reshape
+            next_state = np.reshape(next_state, [1, state_size])
             agent.append_sample(state, action, reward, next_state, done)
 
 
