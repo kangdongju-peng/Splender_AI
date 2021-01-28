@@ -7,6 +7,7 @@ from collections import deque
 from keras.layers import Dense
 from keras.optimizers import Adam
 from keras.models import Sequential
+import tensorflow
 from enviornment import Env, GraphicDisplay
 import gym
 
@@ -27,7 +28,7 @@ class DQNAgent:
         self.learning_rate = 0.001 # 인공신경망에 사용되는 학습
 
         self.state_size = state_size # 인공지능망의 인풋 개수, 상태의 갯수랍니
-        self.action_size = action_size다 # 인공신경망에 아웃풋 개수! TODO 액션리스트중에서 할 수 없는것 가리
+        self.action_size = action_size # 인공신경망에 아웃풋 개수! TODO 액션리스트중에서 할 수 없는것 가리
 
         self.batch_size = 64  # 한번에 학습을 위해 가져올 샘플 수, 조정 필
 
@@ -60,6 +61,15 @@ class DQNAgent:
         model.add(Dense(24, input_dim=self.state_size, activation='relu', kernel_initializer='he_uniform'))
         model.add(Dense(24, activation='relu', kernel_initializer='he_uniform'))
         model.add(Dense(self.action_size, activation='linear', kernel_initializer='he_uniform'))
+        model.summary()
+        model.compile(loss='mse', optimizer=Adam(lr=self.learning_rate))
+        return model
+
+    def drop_token(self):
+        model = Sequential()
+        model.add(Dense(24, input_dim=self.state_size+1, activation='relu', kernel_initializer='he_uniform'))
+        model.add(Dense(24, activation='relu', kernel_initializer='he_uniform'))
+        #model.add(Dense(self.action_size, activation='linear', kernel_initializer='he_uniform')) TODO action_size라는게 뭘까? 그리고 그에 따른 토큰 버리는 아웃풋 고치고, 이 모델 학습시킬 방법 생각.
         model.summary()
         model.compile(loss='mse', optimizer=Adam(lr=self.learning_rate))
         return model
@@ -161,7 +171,7 @@ if __name__ == "__main__":
 
 
         while not done:
-            if render:
+            if agent_2.render:
                 GraphicDisplay.show() # Todo render 설정해놓으면 볼 수 있게 하는 함수야
 
             if env.getFirstAgent() == 1:
@@ -177,13 +187,15 @@ if __name__ == "__main__":
 
 
 
+
+
             next_state_1 = np.reshape(next_state_1, [1, state_size])
             next_state_2 = np.reshape(next_state_2, [1, state_size])
 
             agent_1.append_sample(state_1, action_1, reward_1, next_state_1, done)
             agent_2.append_sample(state_2, action_2, reward_2, next_state_2, done)
 
-            if len(agent_1.memory) >= agent.train_start:
+            if len(agent_1.memory) >= agent_1.train_start:
                 agent_1.train_model()
                 agent_1.train_model_enemy(agent_2.memory)
             #if len(agent_2.memory) >= agent.train_start:    메모리 개수는 똑같아서 그냥 한 함수에 둘다 넣었어.
@@ -207,11 +219,11 @@ if __name__ == "__main__":
                 agent_2.update_target_model()
                 agent_2.update_target_model_enemy()
 
-                scores_2.append(score)
-                episodes_2append(e)  # <-- 이 e가 뭐하는걸까 모르겟음
+                scores_2.append(score_2)
+                episodes_2.append(e)  # <-- 이 e가 뭐하는걸까 모르겟음
                 pylab.plot(episodes_2, scores_2, 'b')
 
-                scores_1.append(score)
+                scores_1.append(score_1)
                 episodes_1.append(e)  # <-- 이 e가 뭐하는걸까 모르겟음
                 pylab.plot(episodes_1, scores_1, 'b')
 
