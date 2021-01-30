@@ -243,8 +243,16 @@ class Env:
         return True
 
     # TODO 토큰 퉤
-    def spit(self):
-        return
+    def spit(self, q_value):
+        q_value_simple = q_value[:4]
+        while True:
+            spit_token = np.argmin(q_value_simple[0])
+            if self.my_token[spit_token] - 1 < 0:
+                del q_value_simple[spit_token]
+            else:
+                self.my_token[spit_token] = self.my_token[spit_token] - 1
+                break
+        return None
 
     # 판단
     def judge(self, q_value):

@@ -76,11 +76,11 @@ class DQNAgent:
         else:
             state.append(enemy_action)  # 상태에 상대방 예상 행동도 추가해서 인공신경망에 넣기
             q_value = self.model.predict(state)
-            return np.argmax(q_value[0])
+            return list(q_value[0])
 
     def get_enemy_action(self, enemy_state):  # 에네미의 예상행동을 반환하는 함수, 탐험 없고 상대 행동받는것 없음
         q_value = self.model.predict(enemy_state)
-        return q_value
+        return np.argmax(q_value[0])
 
     def append_sample(self, state, action, reward, next_state, done):  # 학습샘플을 메모리에 저장하는 함수
         self.memory.append((state, action, reward, next_state, done))
