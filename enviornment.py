@@ -1,5 +1,6 @@
 from random import *
 from functools import reduce
+import numpy as np
 
 
 # 이곳에 있는 모든 토큰은 white blue green red black gold 순으로
@@ -130,6 +131,8 @@ class Env:
         self.my_kept_card = []  # 내가 찜한 카드
         self.my_lord = [[], []]
 
+        self.action_size = 30
+
         for i in range(0, 3):
             self.cards_game[i] = list(self.cards[i])
         for i in range(0, 3):
@@ -163,6 +166,8 @@ class Env:
         state.append(state_score) #내 점수, 상대 점수
         return state
 
+    def state_return(self):
+        return
     # TODO 시작할때의 상태를 나타내는 함수
 
     # 토큰을 가져오는 함수
@@ -186,7 +191,7 @@ class Env:
             for jem in to_collect:
                 self.tokens[jem] -= 1
                 self.my_token[self.turn][jem] += 1
-        return
+        return True
 
     # 킵하는 함수
     # ** card 는 [n, m]형태의 리스트로 n = 티어 m = 번째 / 5번째 = 뒷면
@@ -204,7 +209,7 @@ class Env:
             del self.cards_now[card[0] - 1][card[1] - 1]
             self.cards_now[card[0]][card[1] - 1] = self.cards_game[card[0] - 1][0]
             del self.cards_game[card[0] - 1][card[1] - 1]
-        return
+        return True
 
     # 구매하는 함수
     # ** card 는 [n, m]형태의 리스트로 n = 티어 m = 번째 / 4티어 = 킵 카드
@@ -217,7 +222,7 @@ class Env:
         else:
             self.price(self.cards_now[card[0]][card[1]])
 
-        return
+        return True
 
     # 가격 계산 함수
     # buy 에 포함시켜도 되는데 헷갈려서 그냥 함
@@ -241,9 +246,49 @@ class Env:
     def spit(self):
         return
 
+    # 판단
+    def judge(self, q_value):
+        while True:
+            if reduce(lambda x, y: x + y, list(reversed(sorted(q_value[:4])))[0:3]) <= max(q_value[:4]) * 2:
+                oot = 1
+                col_value = max(q_value[:4]) * 2
+            else:
+                oot = 3
+                col_value = reduce(lambda x, y: x + y, list(reversed(sorted(q_value[:4])))[0:3])
+            for_value = (col_value,
+                         max(q_value[5:17]),
+                         max(q_value[18:]))
+
+            if for_value.index(max(for_value)) == 0:
+                q_value[:4].index(reversed(sorted(q_value[:4])[0]))
+                if oot == 1:
+                    if self.collect(q_value.index(max(q_value[:4]))):
+                        continue
+                    else:
+                        oot = 3
+                if oot == 3:
+                    col_li = list(reversed(sorted(q_value[:4])))
+                    if self.collect(q_value[:4].index(col_li[0]), q_value[:4].index(col_li[1]),
+                                    q_value[:4].index(col_li[2])):
+                        continue
+                    else:
+                        for i in range(0, 5):
+                            q_value[i] = 0
+            if for_value.index(max(for_value)) == 1:
+                if self.buy(q_value[5:17].index(max(q_value[5:17]))):
+                    continue
+                else:
+                    q_value[q_value[5:17].index(max(q_value[5:17])) + 5] = 0
+            if for_value.index(max(for_value)) == 2:
+                if self.keep(q_value[18:].index(max(q_value[:18]))):
+                    continue
+                else:
+                    q_value[q_value[:18].index(max(q_value[:18])) + 18] = 0
+        return
+
     # TODO 말그대로 step
-    # TODO 액션을 어케받는게좋을까
-    def step(self):
+    def step(self, q_val):
+        self.judge(q_val)
         if reduce(lambda x, y: x + y, self.my_token[self.turn]) > 10:
             self.spit()
         for score in self.my_score:
@@ -257,17 +302,6 @@ class Env:
                 self.lord_now.remove(lord)
                 self.my_score[self.turn] += int(lord[0])
         return self.next_state, self.reward
-
-
-class Player:
-    def __init__(self):
-        return
-
-
-class GraphicDisplay:
-    def __init__(self):
-        # 안에 만들어
-        return
 
 
 if __name__ == "__main__":
