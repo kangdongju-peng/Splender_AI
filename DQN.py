@@ -11,7 +11,7 @@ import tensorflow
 from enviornment import Env, GraphicDisplay
 import gym
 
-EPISODES = 300
+EPISODES = 300 # 판수 ㅋ
 
 
 class DQNAgent:
@@ -64,15 +64,6 @@ class DQNAgent:
         model.compile(loss='mse', optimizer=Adam(lr=self.learning_rate))
         return model
 
-    def drop_token(self):
-        model = Sequential()
-        model.add(Dense(24, input_dim=self.state_size + 1, activation='relu', kernel_initializer='he_uniform'))
-        model.add(Dense(24, activation='relu', kernel_initializer='he_uniform'))
-        # model.add(Dense(self.action_size, activation='linear', kernel_initializer='he_uniform')) TODO action_size라는게 뭘까? 그리고 그에 따른 토큰 버리는 아웃풋 고치고, 이 모델 학습시킬 방법 생각.
-        model.summary()
-        model.compile(loss='mse', optimizer=Adam(lr=self.learning_rate))
-        return model
-
     def update_target_model(self):  # 가중치 동기화
         self.target_model.set_weights(self.model.get_weights())
 
@@ -89,7 +80,7 @@ class DQNAgent:
 
     def get_enemy_action(self, enemy_state):  # 에네미의 예상행동을 반환하는 함수, 탐험 없고 상대 행동받는것 없음
         q_value = self.model.predict(enemy_state)
-        return np.argmax(q_value[0])
+        return q_value
 
     def append_sample(self, state, action, reward, next_state, done):  # 학습샘플을 메모리에 저장하는 함수
         self.memory.append((state, action, reward, next_state, done))
@@ -118,7 +109,7 @@ class DQNAgent:
                 target[i][actions[i]] = rewards[i]  # 벨만기대방정식을 이용해서 인공신경망 업데이
             else:
                 target[i][actions[i]] = rewards[i] + self.discount_factor * (
-                    np.amax(target_val[i]))  # Todo 모델 학습에 적 행동 유추하는 모델도 학습시키기 까먹으면 안되지
+                    np.amax(target_val[i]))
         self.model.fit(states, target, batch_size=self.batch_size, epochs=1, verbose=0)
 
     def train_model_enemy(self, memory):  # 적의 메모리를 인수로 받아 학습
@@ -156,13 +147,13 @@ if __name__ == "__main__":
 
     scores_1, episodes_1, scores_2, episodes_2 = [], [], [], []
 
-    for e in range(EPISODES):
+    for e in range(EPISODES): # g한판이라고 피면 ㅇㅇ 치면 ㅇㅇ 치면 ㅇㅇ 치면 ㅇㅇ 치면 done가 겜 끝났나 아닌가 ㅇㅋ?
         done = False
         score_1 = 0
         score_2 = 0
 
-        state_1 = env.reset()  # TODO <-- 상태 리셋하는 함수 env에 넣어야함
-        state_1 = env.startset()  # TODO <-- 시작할때 상태를 나타내는거
+        state_1 = env.reset()  # TODO 스테이트 초기화를 뭔 매턴마다해 바봏여
+        state_1 = np.reshape(state_1, [1, state_size])  # TODO 스테이트 촉화를 뭐이렇게 많이
 
         state_2 = None  # TODO stage의 상대 상태와 자신 상태 바꿔주기
 
@@ -171,7 +162,7 @@ if __name__ == "__main__":
                 GraphicDisplay.show()  # Todo render 설정해놓으면 볼 수 있게 하는 함수야
 
             if env.getFirstAgent() == 1:
-                action_1 = agent_1.get_action(state_1, agent_1.get_enemy_action(state_2))  # 상대의 액션을 넣어서 한
+                action_1 = agent_1.model(state_1, agent_1.get_enemy_action(state_2))  # 상대의 액션을 넣어서 한
                 next_state_1, reward_1, done = env.step(action_1)  # TODO env에 한 액션을 받고 한 턴을 플레이 하는 함수르 만들기
                 action_2 = agent_2.get_action(state_2, agent_2.get_enemy_action(state_1))
                 next_state_2, reward_2, done = env.step(action_2)  # 한턴 진행한거야 먼저한친구가 1이면 이렇게
@@ -201,10 +192,10 @@ if __name__ == "__main__":
             state_2 = next_state_2
 
             if done:
-                agent_1.update_target_model()
-                agent_1.update_target_model_enemy()
-                agent_2.update_target_model()
-                agent_2.update_target_model_enemy()
+                agent_1.update_target_model() #가중치 통일
+                agent_1.update_target_model_enemy()# 가중치 통일
+                agent_2.update_target_model()# 가중치 통
+                agent_2.update_target_model_enemy() # 가중치 통일
 
                 scores_2.append(score_2)
                 episodes_2.append(e)  # <-- 이 e가 뭐하는걸까 모르겟음

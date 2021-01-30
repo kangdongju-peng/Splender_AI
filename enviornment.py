@@ -118,15 +118,15 @@ class Env:
 
         self.cards_game = [[], [], []]  # 순서 없이 섞인 카드들
 
-        self.cards_now = [[], [], []]  # 현제 나와있는 1 2 3티어 카드
+        self.cards_now = [ [], [], []]  # 현제 나와있는 1 2 3티어 카드
         self.lord_now = None  # 본 판에 나와있는 귀족들
         self.tokens = [4, 4, 4, 4, 4, 5]
 
         self.my_score = [0, 0]
         self.my_token = [[0, 0, 0, 0, 0, 0],
-                         [0, 0, 0, 0, 0, 0]]  # 내 토큰
+                         [0, 0, 0, 0, 0, 0]] #내 카드 #상대카
         self.my_card = [[0, 0, 0, 0, 0],
-                        [0, 0, 0, 0, 0]]  # 내 카드
+                        [0, 0, 0, 0, 0]] # 내 카드 # 상대 카드
         self.my_kept_card = []  # 내가 찜한 카드
         self.my_lord = [[], []]
 
@@ -144,11 +144,26 @@ class Env:
 
     # TODO 상태를 초기화하는 함수
     def state_reset(self):
-        return
+        card_now_simple = sum(self.cards_now,[])
+        state = [4, 4, 4, 4, 4, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] #남은 토큰(다이아몬드, 사파이어, 에메랄드, 루비, 줄마노, 찜), 내토큰, 상대토큰
+        state_card = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]# 내카드, 상대카
+        state.append(state_card)
+        for i in range(0,11):
+            card = card_now_simple[i]
+            state.append(self.Token(card[0])) # 필드 카드 계산
+            for j in range(1,7):
+                state.append(card[j])
+        state_keep_card = np.zeros((1, 42))#내가 들고있는 카드, 상대방이 들고있는 카드 * -1은 모르는 뒷면킵
+        state.append(state_keep_card)
+        for i in range(0,2):
+            lord = self.lord_now[i]
+            for j in range(0,5):
+                state.append(lord[j])    #귀족
+        state_score = [0,0]
+        state.append(state_score) #내 점수, 상대 점수
+        return state
 
     # TODO 시작할때의 상태를 나타내는 함수
-    def start_set(self):
-        return
 
     # 토큰을 가져오는 함수
     # collect(가져올 토큰:int, 가져올 토큰/필수아님, 가져올 토큰/필수아님)
