@@ -133,6 +133,8 @@ class Env:
 
         self.action_size = 30
 
+
+
         for i in range(0, 3):
             self.cards_game[i] = list(self.cards[i])
         for i in range(0, 3):
@@ -298,7 +300,8 @@ class Env:
     def step(self, q_val):
         self.judge(q_val)
         if reduce(lambda x, y: x + y, self.my_token[self.turn]) > 10:
-            self.spit()
+            self.spit() # TODO 스핏을 스텝의 인풋으로 받아서 스핏리스트에 있는거 순서대로 하기!
+
         for score in self.my_score:
             if score > 15 and self.turn == 1:
                 done = True

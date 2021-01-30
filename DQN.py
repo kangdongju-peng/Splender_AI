@@ -162,11 +162,67 @@ if __name__ == "__main__":
                 GraphicDisplay.show()  # Todo render 설정해놓으면 볼 수 있게 하는 함수야
 
             if env.getFirstAgent() == 1:
+                spit_list_1 = [0, 0, 0]
+                while True:
+                    q_value_1 = self.model.predict(state_1)
+                    q_value_simple_1 = q_value_1[:4]
+                    if state_1[5+np.argmin(q_value_1[0])] - 1 < 0:
+                        del q_value_simple_1[np.argmin(q_value_1[0])]
+                    else:
+                        spit_list_1[0] = np.argmin(q_value_1[0])
+                        break
+                while True:
+                    state_1_strange = state_1[5+np.argmin(q_value_1[0])] -1
+                    q_value_2 = self.model.predict(state_1_strange)
+                    q_value_simple_2 = q_value_2[:4]
+                    if state_1_strange[5+np.argmin(q_value_2[0])] - 1 < 0:
+                        del q_value_simple_2[np.argmin(q_value_2[0])]
+                    else:
+                        spit_list_1[1] = np.argmin(q_value_2[0])
+                        break
+                while True:
+                    state_1_strange_strange = state_1_strange[5+np.argmin(q_value_2[0])] - 1
+                    q_value_3 = self.model.predict(state_1_strange_strange)
+                    q_value_simple_3 = q_value_3[:4]
+                    if state_1_strange_strange[5+np.argmin(q_value_3[0])] -1 < 0:
+                        del q_value_simple_3[np.argmin(q_value_2[0])]
+                    else:
+                        spit_list_1[2] = np.argmin(q_value_3[0])
+                        break
+
+
                 action_1 = agent_1.model(state_1, agent_1.get_enemy_action(state_2))  # 상대의 액션을 넣어서 한
-                next_state_1, reward_1, done = env.step(action_1)  # TODO env에 한 액션을 받고 한 턴을 플레이 하는 함수르 만들기
+                next_state_1, reward_1, done = env.step(action_1, spit_list_1)  # TODO env에 한 액션을 받고 한 턴을 플레이 하는 함수르 만들기
                 action_2 = agent_2.get_action(state_2, agent_2.get_enemy_action(state_1))
                 next_state_2, reward_2, done = env.step(action_2)  # 한턴 진행한거야 먼저한친구가 1이면 이렇게
             if env.getFirstAgent() == 2:
+                spit_list_2 = [0, 0, 0]
+                while True:
+                    q_value_4 = self.model.predict(state_2)
+                    q_value_simple_4 = q_value_4[:4]
+                    if state_2[5 + np.argmin(q_value_4[0])] - 1 < 0:
+                        del q_value_simple_4[np.argmin(q_value_4[0])]
+                    else:
+                        spit_list_2[0] = np.argmin(q_value_4[0])
+                        break
+                while True:
+                    state_2_strange = state_2[5 + np.argmin(q_value_4[0])] - 1
+                    q_value_5 = self.model.predict(state_2_strange)
+                    q_value_simple_5 = q_value_5[:4]
+                    if state_2_strange[5 + np.argmin(q_value_5[0])] - 1 < 0:
+                        del q_value_simple_5[np.argmin(q_value_5[0])]
+                    else:
+                        spit_list_2[1] = np.argmin(q_value_5[0])
+                        break
+                while True:
+                    state_2_strange_strange = state_2_strange[5 + np.argmin(q_value_6[0])] - 1
+                    q_value_6 = self.model.predict(state_2_strange_strange)
+                    q_value_simple_6 = q_value_6[:4]
+                    if state_2_strange_strange[5 + np.argmin(q_value_6[0])] - 1 < 0:
+                        del q_value_simple_6[np.argmin(q_value_6[0])]
+                    else:
+                        spit_list_2[2] = np.argmin(q_value_6[0])
+                        break
                 action_2 = agent_2.get_action(state_2, agent_2.get_enemy_action(state_1))
                 next_state_2, reward_2, done = env.step(action_2)  # 한턴 진행한거야 먼저한친구가 2이면 이렇게
                 action_1 = agent_1.get_action(state_1, agent_1.get_enemy_action(state_2))
