@@ -263,16 +263,16 @@ class Env:
         return True
 
     # 토큰 퉤
-    def spit(self, q_value):
-        q_value_simple = q_value[:4]
-        while True:
-            spit_token = int(np.argmin(q_value_simple[0]))
-            if self.my_token[self.turn][spit_token] < 1:
-                del q_value_simple[spit_token]
-            else:
-                self.my_token[self.turn][spit_token] -= 1
-                break
-        return None
+   # def spit(self, q_value):
+    #    q_value_simple = q_value[:4]
+     #   while True:
+      #      spit_token = int(np.argmin(q_value_simple[0]))
+      #      if self.my_token[self.turn][spit_token] < 1:
+      #          del q_value_simple[spit_token]
+      #      else:
+      #          self.my_token[self.turn][spit_token] -= 1
+      #          break
+      #  return None
 
     # 판단
     def judge(self, q_value):
@@ -315,7 +315,7 @@ class Env:
         return
 
     # TODO 말그대로 step
-    def step(self, q_val=None, action=None):
+    def step(self, spit, q_val=None, action=None):
         done = False
         if not q_val:
             self.judge(q_val)
@@ -323,7 +323,8 @@ class Env:
             # TODO q value 를 받은게 아닐때 할 수 있는 액션을 만들어야 하는데 너무 귀찮아 그냥 q value 변환함수를 하나 만드는게 빠를것같아
             pass
         if reduce(lambda x, y: x + y, self.my_token[self.turn]) > 10:
-            self.spit(q_val)  # TODO 스핏을 스텝의 인풋으로 받아서 스핏리스트에 있는거 순서대로 하기!
+            for i in range(reduce(lambda x, y: x + y, self.my_token[self.turn]) - 10):
+                self.my_token[self.turn][spit[i]] = self.my_token[self.turn][spit[i]] -1
         for score in self.my_score:
             if score > 15 and self.turn == 1:
                 done = True

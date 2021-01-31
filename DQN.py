@@ -262,7 +262,7 @@ if __name__ == "__main__":
                 pylab.plot(episodes_1, scores_1, 'b')
 
                 # pylab.savefig("")    <- 그래프 저장 경로 사실 딱히 필요없음 자소서 쓸때 필요하려나
-                if np.mean(scores_2[-min(10, len(scores_2)):]) > 100:  # 이전 에피소드 점수 평균이 100넘으면 탈출 (학습)
+                if np.mean(scores_2[-min(10, len(scores_2)):]) > 14:  # 이전 에피소드 점수 평균이 100넘으면 탈출 (학습)
                     # agent.model.save_weights() <-- 이괄호 안에는 학습 데으터를 넣을 경로가 필요한데 아직 못정함
                     sys.exit()
                     # 아래있는거 그래프 + 가중치 동기화
