@@ -119,15 +119,15 @@ class Env:
 
         self.cards_game = [[], [], []]  # 순서 없이 섞인 카드들
 
-        self.cards_now = [ [], [], []]  # 현제 나와있는 1 2 3티어 카드
+        self.cards_now = [[], [], []]  # 현제 나와있는 1 2 3티어 카드
         self.lord_now = None  # 본 판에 나와있는 귀족들
         self.tokens = [4, 4, 4, 4, 4, 5]
 
         self.my_score = [0, 0]
         self.my_token = [[0, 0, 0, 0, 0, 0],
-                         [0, 0, 0, 0, 0, 0]] #내 카드 #상대카
+                         [0, 0, 0, 0, 0, 0]]  # 내 카드 #상대카
         self.my_card = [[0, 0, 0, 0, 0],
-                        [0, 0, 0, 0, 0]] # 내 카드 # 상대 카드
+                        [0, 0, 0, 0, 0]]  # 내 카드 # 상대 카드
         self.my_kept_card = []  # 내가 찜한 카드
         self.my_lord = [[], []]
 
@@ -147,30 +147,48 @@ class Env:
         self.lord_now = sample(self.lords, 3)
         return
 
-    # TODO 상태를 초기화하는 함수
+    # 상태를 초기화하는 함수
     def state_reset(self):
-        card_now_simple = sum(self.cards_now,[])
-        state = [4, 4, 4, 4, 4, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] #남은 토큰(다이아몬드, 사파이어, 에메랄드, 루비, 줄마노, 찜), 내토큰, 상대토큰
-        state_card = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]# 내카드, 상대카
+        card_now_simple = sum(self.cards_now, [])
+        state = [4, 4, 4, 4, 4, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                 0]  # 남은 토큰(다이아몬드, 사파이어, 에메랄드, 루비, 줄마노, 찜), 내토큰, 상대토큰
+        state_card = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]  # 내카드, 상대카
         state.append(state_card)
-        for i in range(0,11):
+        for i in range(0, 12):
             card = card_now_simple[i]
-            state.append(self.Token(card[0])) # 필드 카드 계산
-            for j in range(1,7):
+            state.append(self.Token[card[0]])  # 필드 카드 계산
+            for j in range(1, 7):
                 state.append(card[j])
-        state_keep_card = np.zeros((1, 42))#내가 들고있는 카드, 상대방이 들고있는 카드 * -1은 모르는 뒷면킵
+        state_keep_card = np.zeros((1, 42))  # 내가 들고있는 카드, 상대방이 들고있는 카드 * -1은 모르는 뒷면킵
         state.append(state_keep_card)
-        for i in range(0,2):
+        for i in range(0, 2):
             lord = self.lord_now[i]
-            for j in range(0,5):
-                state.append(lord[j])    #귀족
-        state_score = [0,0]
-        state.append(state_score) #내 점수, 상대 점수
+            for j in range(0, 5):
+                state.append(lord[j])  # 귀족
+        state_score = [0, 0]
+        state.append(state_score)  # 내 점수, 상대 점수
         return state
 
-    def state_return(self):
-        return
-    # TODO 시작할때의 상태를 나타내는 함수
+    def state_return(self, turn):
+        ind = (lambda x: 1 if x == 0 else 0)(turn)
+        state = self.tokens + self.my_token[turn] + \
+                self.my_token[ind] + self.my_card[turn] + self.my_card[ind]
+        for cards in self.cards_now:
+            for card in cards:
+                state.append(self.Token[card[0]])
+                for cd in card[1:]:
+                    state.append(cd)
+
+        full3 = lambda t: self.my_kept_card[t] if len(self.my_kept_card[t]) == 3 else self.my_kept_card[t] + [0] \
+            if len(self.my_kept_card[t]) == 2 else self.my_kept_card[t] + [0, 0] if len(
+            self.my_kept_card[t]) == 1 else [0, 0, 0]
+
+        state += full3(turn) + full3(ind)
+        for lord in self.lord_now:
+            for lor in lord:
+                state.append(int(lor))
+        state += self.my_score
+        return state
 
     # 토큰을 가져오는 함수
     # collect(가져올 토큰:int, 가져올 토큰/필수아님, 가져올 토큰/필수아님)
@@ -178,7 +196,7 @@ class Env:
         if len(to_collect) == 1:
             # check collectable
             if self.tokens[to_collect[0]] >= 4:
-                self.tokens[self.turn][to_collect[0]] -= 2
+                self.tokens[to_collect[0]] -= 2
                 self.my_token[to_collect[0]] += 2
             else:
                 return False  # I hope u 2 make AI which can prejudge this thing..or give it as state?
@@ -244,15 +262,15 @@ class Env:
             self.my_score[self.turn] += card_str[1]
         return True
 
-    # TODO 토큰 퉤
+    # 토큰 퉤
     def spit(self, q_value):
         q_value_simple = q_value[:4]
         while True:
-            spit_token = np.argmin(q_value_simple[0])
-            if self.my_token[spit_token] - 1 < 0:
+            spit_token = int(np.argmin(q_value_simple[0]))
+            if self.my_token[self.turn][spit_token] < 1:
                 del q_value_simple[spit_token]
             else:
-                self.my_token[spit_token] = self.my_token[spit_token] - 1
+                self.my_token[self.turn][spit_token] -= 1
                 break
         return None
 
@@ -269,39 +287,43 @@ class Env:
                          max(q_value[5:17]),
                          max(q_value[18:]))
 
-            if for_value.index(max(for_value)) == 0:
+            if np.argmax(for_value) == 0:
                 q_value[:4].index(reversed(sorted(q_value[:4])[0]))
                 if oot == 1:
                     if self.collect(q_value.index(max(q_value[:4]))):
-                        continue
+                        break
                     else:
                         oot = 3
                 if oot == 3:
                     col_li = list(reversed(sorted(q_value[:4])))
                     if self.collect(q_value[:4].index(col_li[0]), q_value[:4].index(col_li[1]),
                                     q_value[:4].index(col_li[2])):
-                        continue
+                        break
                     else:
                         for i in range(0, 5):
                             q_value[i] = 0
-            if for_value.index(max(for_value)) == 1:
+            if np.argmax(for_value) == 1:
                 if self.buy(q_value[5:17].index(max(q_value[5:17]))):
-                    continue
+                    break
                 else:
                     q_value[q_value[5:17].index(max(q_value[5:17])) + 5] = 0
-            if for_value.index(max(for_value)) == 2:
+            if np.argmax(for_value) == 2:
                 if self.keep(q_value[18:].index(max(q_value[:18]))):
-                    continue
+                    break
                 else:
                     q_value[q_value[:18].index(max(q_value[:18])) + 18] = 0
         return
 
     # TODO 말그대로 step
-    def step(self, q_val):
-        self.judge(q_val)
+    def step(self, q_val=None, action=None):
+        done = False
+        if not q_val:
+            self.judge(q_val)
+        else:
+            # TODO q value 를 받은게 아닐때 할 수 있는 액션을 만들어야 하는데 너무 귀찮아 그냥 q value 변환함수를 하나 만드는게 빠를것같아
+            pass
         if reduce(lambda x, y: x + y, self.my_token[self.turn]) > 10:
-            self.spit() # TODO 스핏을 스텝의 인풋으로 받아서 스핏리스트에 있는거 순서대로 하기!
-
+            self.spit(q_val)  # TODO 스핏을 스텝의 인풋으로 받아서 스핏리스트에 있는거 순서대로 하기!
         for score in self.my_score:
             if score > 15 and self.turn == 1:
                 done = True
@@ -312,10 +334,8 @@ class Env:
                 self.my_lord[self.turn].append(lord)
                 self.lord_now.remove(lord)
                 self.my_score[self.turn] += int(lord[0])
-        return self.next_state, self.reward
+        return self.state_return(self.turn), self.reward, done
 
 
 if __name__ == "__main__":
-    env = Env()
-    for ch in env.price(env.cards[0][0]):
-        print(ch)
+    pass
