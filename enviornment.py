@@ -7,8 +7,10 @@ import numpy as np
 # 0 1 2 3 4 5 의 번호를 가짐을 알립니다
 
 class Env:
-
     def __init__(self):
+        self.turn = 0
+        self.setting()
+        self.state_space = 126
         self.Token = {'w': 0,
                       'b': 1,
                       'g': 2,
@@ -133,8 +135,6 @@ class Env:
 
         self.action_size = 30
 
-
-
         for i in range(0, 3):
             self.cards_game[i] = list(self.cards[i])
         for i in range(0, 3):
@@ -145,20 +145,156 @@ class Env:
             self.cards_now[i] = [self.cards_game[i][:3]]
             del self.cards_game[i][:3]
         self.lord_now = sample(self.lords, 3)
+
+    def setting(self):
+        self.Token = {'w': 0,
+                      'u': 1,
+                      'g': 2,
+                      'r': 3,
+                      'k': 4}
+        self.done = False
+
+        self.turn = 0  # 턴 0번플레이어, 1번플레이어로 나뉨
+
+        self.lords = ('340004',
+                      '344000',
+                      '333300',
+                      '300044',
+                      '300333',
+                      '304400',
+                      '330033',
+                      '303330',
+                      '300440',
+                      '333003',)  # 귀족 종류
+        self.cards = (('k011110',
+                       'k012110',
+                       'k022010',
+                       'k000131',
+                       'k000210',
+                       'k020200',
+                       'k000300',
+                       'k104000',
+                       'u010111',
+                       'u010121',
+                       'u010220',
+                       'u001310',
+                       'u010002',
+                       'u000202',
+                       'u000003',
+                       'u100040',
+                       'w001111',
+                       'w001211',
+                       'w002201',
+                       'w031001',
+                       'w000021',
+                       'w002002',
+                       'w003000',
+                       'w100400',
+                       'g011011',
+                       'g011012',
+                       'g001022',
+                       'g013100',
+                       'g021000',
+                       'g002020',
+                       'g000030',
+                       'g100004',
+                       'r011101',
+                       'r021101',
+                       'r021101',
+                       'r020102',
+                       'r010013',
+                       'r002100',
+                       'r020020',
+                       'r030000',), ('k132200',
+                                     'k130302',
+                                     'k201420',
+                                     'k200530',
+                                     'k205000',
+                                     'k300006',
+                                     'u102230',
+                                     'u102303',
+                                     'u253000',
+                                     'u220014',
+                                     'u205000',
+                                     'u306000',
+                                     'w100322',
+                                     'w123030',
+                                     'w200142',
+                                     'w200053',
+                                     'w200050',
+                                     'w360000',
+                                     'g130230',
+                                     'g123002',
+                                     'g242001',
+                                     'g205300',
+                                     'g200500',
+                                     'g300600',
+                                     'r120023',
+                                     'r103023',
+                                     'r214200',
+                                     'r230005',
+                                     'r200005',
+                                     'r300060',), ('k333530',
+                                                   'k433530',
+                                                   'k400070',
+                                                   'k500073',
+                                                   'u330335',
+                                                   'u470000',
+                                                   'u463003',
+                                                   'u573000',
+                                                   'w303353',
+                                                   'w400007',
+                                                   'w430036',
+                                                   'w530007',
+                                                   'g353033',
+                                                   'g407000',
+                                                   'g436300',
+                                                   'g507300',
+                                                   'r335303',
+                                                   'r400700',
+                                                   'r400700',
+                                                   'r500730',),)  # 카드 종류
+
+        self.cards_game = [[], [], []]  # 순서 없이 섞인 카드들
+
+        self.cards_now = [[], [], []]  # 현제 나와있는 1 2 3티어 카드
+        self.lord_now = None  # 본 판에 나와있는 귀족들
+        self.tokens = [4, 4, 4, 4, 4, 5]
+
+        self.my_score = [0, 0]
+        self.my_token = [[0, 0, 0, 0, 0, 0],
+                         [0, 0, 0, 0, 0, 0]]  # 내 카드 #상대카
+        self.my_card = [[0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0]]  # 내 카드 # 상대 카드
+        self.my_kept_card = [[], []]  # 내가 찜한 카드
+        self.my_lord = [[], []]
+
+        self.action_size = 30
+
+        for i in range(0, 3):
+            self.cards_game[i] = list(self.cards[i])
+        for i in range(0, 3):
+            shuffle(self.cards_game[i])
+        for i in range(0, 3):
+            self.cards_game[i] = list(self.cards[i])
+            shuffle(self.cards_game[i])
+            self.cards_now[i] = self.cards_game[i][:4]
+            del self.cards_game[i][:4]
+        self.lord_now = sample(self.lords, 3)
         return
 
     # 상태를 초기화하는 함수
     def state_reset(self):
-        card_now_simple = sum(self.cards_now, [])
+
         state = [4, 4, 4, 4, 4, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                  0]  # 남은 토큰(다이아몬드, 사파이어, 에메랄드, 루비, 줄마노, 찜), 내토큰, 상대토큰
         state_card = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]  # 내카드, 상대카
         state.append(state_card)
-        for i in range(0, 12):
-            card = card_now_simple[i]
-            state.append(self.Token[card[0]])  # 필드 카드 계산
-            for j in range(1, 7):
-                state.append(card[j])
+        for cards in self.cards_now:
+            for card in cards:
+                state.append(self.Token[card[0]])
+                for cd in card[1:]:
+                    state.append(cd)
         state_keep_card = np.zeros((1, 42))  # 내가 들고있는 카드, 상대방이 들고있는 카드 * -1은 모르는 뒷면킵
         state.append(state_keep_card)
         for i in range(0, 2):
@@ -171,23 +307,23 @@ class Env:
 
     def state_return(self, turn):
         ind = (lambda x: 1 if x == 0 else 0)(turn)
+        turn, ind = ind, turn
         state = self.tokens + self.my_token[turn] + \
                 self.my_token[ind] + self.my_card[turn] + self.my_card[ind]
         for cards in self.cards_now:
             for card in cards:
                 state.append(self.Token[card[0]])
-                for cd in card[1:]:
-                    state.append(cd)
-
-        full3 = lambda t: self.my_kept_card[t] if len(self.my_kept_card[t]) == 3 else self.my_kept_card[t] + [0] \
-            if len(self.my_kept_card[t]) == 2 else self.my_kept_card[t] + [0, 0] if len(
-            self.my_kept_card[t]) == 1 else [0, 0, 0]
+                for i in range(1, 7):
+                    state.append(int(card[i]))
+        full3 = lambda t: self.my_kept_card[t] if len(self.my_kept_card[t]) == 3 else self.my_kept_card[t] + [0] if len(
+            self.my_kept_card[t]) == 2 else self.my_kept_card[t] + [0, 0] if len(self.my_kept_card[t]) == 1 else [0, 0,
+                                                                                                                  0]
 
         state += full3(turn) + full3(ind)
         for lord in self.lord_now:
-            for lor in lord:
-                state.append(int(lor))
-        state += self.my_score
+            for i in range(len(lord)):
+                state.append(int(lord[i]))
+        state += [self.my_score[turn], self.my_score[ind]]
         return state
 
     # 토큰을 가져오는 함수
@@ -197,20 +333,19 @@ class Env:
             # check collectable
             if self.tokens[to_collect[0]] >= 4:
                 self.tokens[to_collect[0]] -= 2
-                self.my_token[to_collect[0]] += 2
+                self.my_token[self.turn][to_collect[0]] += 2
             else:
                 return False  # I hope u 2 make AI which can prejudge this thing..or give it as state?
         elif len(to_collect) == 3:
             for jem in to_collect:
                 if jem >= 5:
                     return False
-                if not self.tokens[jem] == 0:
-                    continue
-                else:
+                if self.tokens[jem] <= 0:
                     return False
             for jem in to_collect:
                 self.tokens[jem] -= 1
                 self.my_token[self.turn][jem] += 1
+        print("collect")
         return True
 
     # 킵하는 함수
@@ -229,19 +364,24 @@ class Env:
             del self.cards_now[card[0] - 1][card[1] - 1]
             self.cards_now[card[0]][card[1] - 1] = self.cards_game[card[0] - 1][0]
             del self.cards_game[card[0] - 1][card[1] - 1]
+        print("keep")
         return True
 
     # 구매하는 함수
-    # ** card 는 [n, m]형태의 리스트로 n = 티어 m = 번째 / 4티어 = 킵 카드
+    # ** card 는 [n, m]형태의 리스트로 n = 티어-1 m = 번째 / 4티어 = 킵 카드
     def buy(self, card):
-        if card[0] == 4:
+        if card[0] == 3:
             if len(self.my_kept_card[self.turn]) == 0:
                 return False
             else:
-                self.price(self.my_kept_card[self.turn][card[1]])
+                if not self.price(self.my_kept_card[self.turn][card[1]]):
+                    return False
         else:
-            self.price(self.cards_now[card[0]][card[1]])
-
+            print("card0  " + str(card[0]))
+            print("card1  " + str(card[1]))
+            if not self.price(self.cards_now[card[0]][card[1]]):
+                return False
+        print("buy")
         return True
 
     # 가격 계산 함수
@@ -249,82 +389,77 @@ class Env:
     def price(self, card_str):
         ori_token = self.my_token[self.turn]
         for i in range(0, 5):
+            # print(self.state_return(self.turn))
             price = int(card_str[i + 2]) - int(self.my_card[self.turn][i])
+            print(price)
             if price <= self.my_token[self.turn][i]:
                 self.my_token[self.turn][i] -= price
             elif price <= self.my_token[self.turn][i] + self.my_token[self.turn][5]:
-                self.my_token[self.turn][5] -= price - self.my_token[self.turn][i]
+                self.my_token[self.turn][5] -= (price - self.my_token[self.turn][i])
                 self.my_token[self.turn][i] = 0
             else:
-                self.my_token = ori_token
+                self.my_token[self.turn] = ori_token
                 return False
-            self.my_card[self.turn][self.Token[card_str[0]]] += 1
-            self.my_score[self.turn] += card_str[1]
+        self.my_card[self.turn][self.Token[card_str[0]]] += 1
+        self.my_score[self.turn] += int(card_str[1])
         return True
-
-    # 토큰 퉤
-   # def spit(self, q_value):
-    #    q_value_simple = q_value[:4]
-     #   while True:
-      #      spit_token = int(np.argmin(q_value_simple[0]))
-      #      if self.my_token[self.turn][spit_token] < 1:
-      #          del q_value_simple[spit_token]
-      #      else:
-      #          self.my_token[self.turn][spit_token] -= 1
-      #          break
-      #  return None
 
     # 판단
     def judge(self, q_value):
         while True:
-            if reduce(lambda x, y: x + y, list(reversed(sorted(q_value[:4])))[0:3]) <= max(q_value[:4]) * 2:
+            if sum(list(reversed(sorted(q_value[:5])))[0:5]) < max(q_value[:5]) * 2:
                 oot = 1
-                col_value = max(q_value[:4]) * 2
+                col_value = max(q_value[:5]) * 2
             else:
                 oot = 3
-                col_value = reduce(lambda x, y: x + y, list(reversed(sorted(q_value[:4])))[0:3])
+                col_value = reduce(lambda x, y: x + y, list(reversed(sorted(q_value[:5])))[0:5])
             for_value = (col_value,
-                         max(q_value[5:17]),
+                         max(q_value[5:18]),
                          max(q_value[18:]))
-
             if np.argmax(for_value) == 0:
-                q_value[:4].index(reversed(sorted(q_value[:4])[0]))
+                # q_value[:5].index(reversed(sorted(q_value[:5])[0]))
                 if oot == 1:
-                    if self.collect(q_value.index(max(q_value[:4]))):
+                    if self.collect(q_value.index(max(q_value[:5]))):
                         break
                     else:
                         oot = 3
                 if oot == 3:
-                    col_li = list(reversed(sorted(q_value[:4])))
-                    if self.collect(q_value[:4].index(col_li[0]), q_value[:4].index(col_li[1]),
-                                    q_value[:4].index(col_li[2])):
+                    _q_value = q_value[:5]
+                    col_li_ag = [0, 0, 0]
+                    for i in range(3):
+                        col_li_ag[i] = _q_value.index(max(_q_value))
+                        _q_value[_q_value.index(max(_q_value))] = -1000
+                    if self.collect(col_li_ag[0], col_li_ag[1], col_li_ag[2]):
                         break
                     else:
-                        for i in range(0, 5):
-                            q_value[i] = 0
-            if np.argmax(for_value) == 1:
-                if self.buy(q_value[5:17].index(max(q_value[5:17]))):
+                        q_value[col_li_ag[0]] = -1000
+            elif np.argmax(for_value) == 1:
+                if self.buy([int(int(np.argmax(q_value[5:18])) / 4), int(int(np.argmax(q_value[5:18])) % 4)]):
                     break
                 else:
-                    q_value[q_value[5:17].index(max(q_value[5:17])) + 5] = 0
-            if np.argmax(for_value) == 2:
-                if self.keep(q_value[18:].index(max(q_value[:18]))):
+                    q_value[np.argmax(q_value[5:17]) + 5] = -1000
+            elif np.argmax(for_value) == 2:
+                if self.keep(
+                        [int(q_value[18:].index(max(q_value[18:])) / 5), q_value[18:].index(max(q_value[18:])) % 5]):
                     break
                 else:
-                    q_value[q_value[:18].index(max(q_value[:18])) + 18] = 0
+                    q_value[q_value[18:].index(max(q_value[18:])) + 18] = 0
+            print(q_value)
         return
 
     # TODO 말그대로 step
     def step(self, spit, q_val=None, action=None):
         done = False
-        if not q_val:
+        print(q_val)
+        if not q_val is None:
             self.judge(q_val)
         else:
             # TODO q value 를 받은게 아닐때 할 수 있는 액션을 만들어야 하는데 너무 귀찮아 그냥 q value 변환함수를 하나 만드는게 빠를것같아
             pass
-        if reduce(lambda x, y: x + y, self.my_token[self.turn]) > 10:
-            for i in range(reduce(lambda x, y: x + y, self.my_token[self.turn]) - 10):
-                self.my_token[self.turn][spit[i]] = self.my_token[self.turn][spit[i]] -1
+        print(self.my_token[self.turn])
+        if sum(self.my_token[self.turn]) > 10:
+            for i in range(sum(self.my_token[self.turn]) - 10):
+                self.my_token[self.turn][spit[i]] = self.my_token[self.turn][spit[i]] - 1
         for score in self.my_score:
             if score > 15 and self.turn == 1:
                 done = True
@@ -335,7 +470,12 @@ class Env:
                 self.my_lord[self.turn].append(lord)
                 self.lord_now.remove(lord)
                 self.my_score[self.turn] += int(lord[0])
-        return self.state_return(self.turn), self.reward, done
+        _turn = self.turn
+        if self.turn == 0:
+            self.turn = 1
+        else:
+            self.turn = 0
+        return self.state_return(_turn), self.my_score[self.turn], done
 
 
 if __name__ == "__main__":

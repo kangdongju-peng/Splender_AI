@@ -8,10 +8,11 @@ from keras.layers import Dense
 from keras.optimizers import Adam
 from keras.models import Sequential
 import tensorflow
-from enviornment import Env, GraphicDisplay
+import torch
+from enviornment import Env
 import gym
 
-EPISODES = 300 # 판수 ㅋ
+EPISODES = 300  # 판수 ㅋ
 
 
 class DQNAgent:
@@ -72,7 +73,7 @@ class DQNAgent:
 
     def get_action(self, state, enemy_action):  # 인공신경망을 이용해서 상태와 상대 예상행동을 받고 행동을 리턴
         if np.random.rand() <= self.epsilon:
-            return random.randrange(self.action_size)  # 탐험률
+            return np.zeros(32)  # 탐험률
         else:
             state.append(enemy_action)  # 상태에 상대방 예상 행동도 추가해서 인공신경망에 넣기
             q_value = self.model.predict(state)
@@ -80,7 +81,7 @@ class DQNAgent:
 
     def get_enemy_action(self, enemy_state):  # 에네미의 예상행동을 반환하는 함수, 탐험 없고 상대 행동받는것 없음
         q_value = self.model.predict(enemy_state)
-        return np.argmax(q_value[0])
+        return int(np.argmax(q_value[0]))
 
     def append_sample(self, state, action, reward, next_state, done):  # 학습샘플을 메모리에 저장하는 함수
         self.memory.append((state, action, reward, next_state, done))
@@ -138,155 +139,123 @@ class DQNAgent:
 
 if __name__ == "__main__":
 
-    env = Env  # 환경 가저오기!
-    state_size = env.state_space  # TODO 환경에 상태의 크기를 가져오는 함수가 필요함
-    action_size = env.action_space  # TODO 환경에 액션의 크기를 가져오는 함수가 필여
+    env = Env()  # 환경 가저오기!
+    state_size = 138  # TODO 환경에 상태의 크기를 가져오는 함수가 필요함
+    action_size = 32  # TODO 환경에 액션의 크기를 가져오는 함수가 필여
 
     agent_1 = DQNAgent(state_size, action_size)
     agent_2 = DQNAgent(state_size, action_size)  # 이제부터 환경의 함수가 필요한데.,,, 내일 말조 ㅁ해보고 하자
 
     scores_1, episodes_1, scores_2, episodes_2 = [], [], [], []
 
-    for e in range(EPISODES): # g한판이라고 피면 ㅇㅇ 치면 ㅇㅇ 치면 ㅇㅇ 치면 ㅇㅇ 치면 done가 겜 끝났나 아닌가 ㅇㅋ?
+    for e in range(EPISODES):  # g한판이라고 피면 ㅇㅇ 치면 ㅇㅇ 치면 ㅇㅇ 치면 ㅇㅇ 치면 done가 겜 끝났나 아닌가 ㅇㅋ?
         done = False
         score_1 = 0
         score_2 = 0
 
-        state_1 = env.reset()  # TODO 스테이트 초기화를 뭔 매턴마다해 바봏여
-        state_1 = np.reshape(state_1, [1, state_size])  # TODO 스테이트 촉화를 뭐이렇게 많이
         env.setting()
+        state_1 = env.state_return(0) + [1]  # TODO 스테이트 초기화를 뭔 매턴마다해 바봏여
+        state_1 = np.reshape(state_1, [1, state_size + 1])  # TODO 스테이트 촉화를 뭐이렇게 많이
 
-        state_2 = None  # TODO stage의 상대 상태와 자신 상태 바꿔주기
+        state_2 = env.state_return(1) + [1]  # TODO stage의 상대 상태와 자신 상태 바꿔주기
+        state_2 = np.reshape(state_2, [1, state_size + 1])  # TODO 스테이트 촉화를 뭐이렇게 많이
 
         while not done:
-            if render:
-                GraphicDisplay.show()  # Todo render 설정해놓으면 볼 수 있게 하는 함수야
+            # if render:
+            #    GraphicDisplay.show()  # Todo render 설정해놓으면 볼 수 있게 하는 함수야
 
-            if env.getFirstAgent() == 1:
+            if env.turn == 0:
                 spit_list_1 = [0, 0, 0]
+                q_value_1 = list(agent_1.model.predict(state_1)[0])
+                q_value_simple_1 = q_value_1[:5]
                 while True:
-                    q_value_1 = agent_1.model.predict(state_1)
-                    q_value_simple_1 = q_value_1[:4]
-                    if state_1[5+np.argmin(q_value_1[0])] - 1 < 0:
-                        del q_value_simple_1[np.argmin(q_value_1[0])]
-                    else:
-                        spit_list_1[0] = np.argmin(q_value_1[0])
+                    if sum(env.my_token[0]) < 7:
                         break
+                    if state_1[0, 6 + int(np.argmin(q_value_1[0]))] < 1:
+                        del q_value_simple_1[int(np.argmin(q_value_simple_1))]
+                    else:
+                        spit_list_1[0] = int(np.argmin(q_value_simple_1[0]))
+                        break
+                state_1_strange = state_1[0]
+                state_1_strange[6 + int(np.argmin(q_value_1[0]))] -= 1
+                state_1_strange = np.reshape(state_1_strange, [1, state_size + 1])
+                q_value_2 = (agent_1.model.predict(state_1_strange)[0])
+                q_value_simple_2 = q_value_2[:5]
                 while True:
-                    state_1_strange = state_1[5+np.argmin(q_value_1[0])] -1
-                    q_value_2 = agent_1.model.predict(state_1_strange)
-                    q_value_simple_2 = q_value_2[:4]
-                    if state_1_strange[5+np.argmin(q_value_2[0])] - 1 < 0:
-                        del q_value_simple_2[np.argmin(q_value_2[0])]
-                    else:
-                        spit_list_1[1] = np.argmin(q_value_2[0])
+                    if sum(env.my_token[0]) < 7:
                         break
+                    if state_1_strange[0, 6 + int(np.argmin(q_value_2[0]))] < 1:
+                        del q_value_simple_2[int(np.argmin(q_value_simple_2))]
+                    else:
+                        spit_list_1[1] = int(np.argmin(q_value_simple_2[0]))
+                        break
+                state_1_strange_strange = state_1_strange[0]
+                state_1_strange_strange[6 + int(np.argmin(q_value_2[0]))] -= 1
+                state_1_strange_strange = np.reshape(state_1_strange_strange, [1, state_size + 1])
+                q_value_3 = agent_1.model.predict(state_1_strange_strange)[0]
+                q_value_simple_3 = list(q_value_3[:5])
                 while True:
-                    state_1_strange_strange = state_1_strange[5+np.argmin(q_value_2[0])] - 1
-                    q_value_3 = agent_1.model.predict(state_1_strange_strange)
-                    q_value_simple_3 = q_value_3[:4]
-                    if state_1_strange_strange[5+np.argmin(q_value_3[0])] -1 < 0:
-                        del q_value_simple_3[np.argmin(q_value_2[0])]
-                    else:
-                        spit_list_1[2] = np.argmin(q_value_3[0])
+                    if sum(env.my_token[0]) < 7:
                         break
+                    print(state_1_strange_strange[0, 6 + int(np.argmin(q_value_simple_3))])
+                    if state_1_strange_strange[0, 6 + int(np.argmin(q_value_simple_3))] < 1:
+                        print(q_value_simple_3)
+                        q_value_simple_3.remove(min(q_value_simple_3))
+                    else:
+                        spit_list_1[2] = int(np.argmin(q_value_3[0]))
+                        break
+                action_1 = agent_1.get_action(state_1, agent_1.get_enemy_action(state_2))  # 상대의 액션을 넣어서 한
+                next_state_1, reward_1, done = env.step(spit_list_1,
+                                                        list(action_1))  # TODO env에 한 액션을 받고 한 턴을 플레이 하는 함수르 만들기
 
-
-                action_1 = agent_1.model(state_1, agent_1.get_enemy_action(state_2))  # 상대의 액션을 넣어서 한
-                next_state_1, reward_1, done = env.step(spit_list_1, action_1)  # TODO env에 한 액션을 받고 한 턴을 플레이 하는 함수르 만들기
-
+            next_state_1 = np.reshape(next_state_1 + [1], [1, state_size + 1])
+            state_2 = next_state_1
+            if env.turn == 1:
                 spit_list_2 = [0, 0, 0]
                 while True:
-                    q_value_4 = agent_2.model.predict(state_2)
-                    q_value_simple_4 = q_value_4[:4]
-                    if state_2[5 + np.argmin(q_value_4[0])] - 1 < 0:
-                        del q_value_simple_4[np.argmin(q_value_4[0])]
-                    else:
-                        spit_list_2[0] = np.argmin(q_value_4[0])
+                    q_value_4 = list(agent_2.model.predict(state_2))
+                    q_value_simple_4 = q_value_4[:5]
+                    if sum(env.my_token[1]) < 7:
                         break
+                    if state_2[0, 6 + int(np.argmin(q_value_4[0]))] - 1 < 0:
+                        del q_value_simple_4[int(np.argmin(q_value_simple_4))]
+                    else:
+                        spit_list_2[0] = int(np.argmin(q_value_simple_4))
+                        break
+                    print('1')
+                state_2_strange = state_2[0]
+                state_2_strange[6 + np.argmin(q_value_4[0])] -= 1
+                state_2_strange = np.reshape(state_2_strange, [1, state_size + 1])
                 while True:
-                    state_2_strange = state_2[5 + np.argmin(q_value_4[0])] - 1
-                    q_value_5 = agent_2.model.predict(state_2_strange)
-                    q_value_simple_5 = q_value_5[:4]
-                    if state_2_strange[5 + np.argmin(q_value_5[0])] - 1 < 0:
-                        del q_value_simple_5[np.argmin(q_value_5[0])]
-                    else:
-                        spit_list_2[1] = np.argmin(q_value_5[0])
+                    q_value_5 = list(agent_2.model.predict(state_2_strange)[0])
+                    q_value_simple_5 = q_value_5[:5]
+                    if sum(env.my_token[1]) < 7:
                         break
+                    if state_2_strange[0, 6 + int(np.argmin(q_value_5[0]))] - 1 < 0:
+                        del q_value_simple_5[int(np.argmin(q_value_simple_5))]
+                    else:
+                        spit_list_2[1] = int(np.argmin(q_value_5[0]))
+                        break
+                    print('2')
+                state_2_strange_strange = state_2_strange[0]
+                state_2_strange_strange[6 + int(np.argmin(q_value_5[0]))] -= 1
+                state_2_strange_strange = np.reshape(state_2_strange_strange, [1, state_size+1])
                 while True:
-                    state_2_strange_strange = state_2_strange[5 + np.argmin(q_value_6[0])] - 1
-                    q_value_6 = agent_2.model.predict(state_2_strange_strange)
-                    q_value_simple_6 = q_value_6[:4]
-                    if state_2_strange_strange[5 + np.argmin(q_value_6[0])] - 1 < 0:
-                        del q_value_simple_6[np.argmin(q_value_6[0])]
-                    else:
-                        spit_list_2[2] = np.argmin(q_value_6[0])
+                    q_value_6 = list(agent_2.model.predict(state_2_strange_strange))
+                    q_value_simple_6 = q_value_6[:5]
+                    if sum(env.my_token[1]) < 7:
                         break
+                    if state_2_strange_strange[0, 6 + np.argmin(q_value_6[0])] - 1 < 0:
+                        del q_value_simple_6[int(np.argmin(q_value_simple_6))]
+                    else:
+                        spit_list_2[2] = int(np.argmin(q_value_6[0]))
+                        break
+                    print('3')
+
                 action_2 = agent_2.get_action(state_2, agent_2.get_enemy_action(state_1))
-                next_state_2, reward_2, done = env.step(spit_list_2,action_2)  # 한턴 진행한거야 먼저한친구가 1이면 이렇게
-            if env.getFirstAgent() == 2:
-                spit_list_2 = [0, 0, 0]
-                while True:
-                    q_value_4 = agent_2.model.predict(state_2)
-                    q_value_simple_4 = q_value_4[:4]
-                    if state_2[5 + np.argmin(q_value_4[0])] - 1 < 0:
-                        del q_value_simple_4[np.argmin(q_value_4[0])]
-                    else:
-                        spit_list_2[0] = np.argmin(q_value_4[0])
-                        break
-                while True:
-                    state_2_strange = state_2[5 + np.argmin(q_value_4[0])] - 1
-                    q_value_5 = agent_2.model.predict(state_2_strange)
-                    q_value_simple_5 = q_value_5[:4]
-                    if state_2_strange[5 + np.argmin(q_value_5[0])] - 1 < 0:
-                        del q_value_simple_5[np.argmin(q_value_5[0])]
-                    else:
-                        spit_list_2[1] = np.argmin(q_value_5[0])
-                        break
-                while True:
-                    state_2_strange_strange = state_2_strange[5 + np.argmin(q_value_6[0])] - 1
-                    q_value_6 = agent_2.model.predict(state_2_strange_strange)
-                    q_value_simple_6 = q_value_6[:4]
-                    if state_2_strange_strange[5 + np.argmin(q_value_6[0])] - 1 < 0:
-                        del q_value_simple_6[np.argmin(q_value_6[0])]
-                    else:
-                        spit_list_2[2] = np.argmin(q_value_6[0])
-                        break
-                action_2 = agent_2.get_action(state_2, agent_2.get_enemy_action(state_1))
-                next_state_2, reward_2, done = env.step(spit_list_2, action_2)  # 한턴 진행한거야 먼저한친구가 2이면 이렇게
+                next_state_2, reward_2, done = env.step(spit_list_2, list(action_2))  # 한턴 진행한거야 먼저한친구가 1이면 이렇게
 
-                while True:
-                    q_value_1 = agent_1.model.predict(state_1)
-                    q_value_simple_1 = q_value_1[:4]
-                    if state_1[5+np.argmin(q_value_1[0])] - 1 < 0:
-                        del q_value_simple_1[np.argmin(q_value_1[0])]
-                    else:
-                        spit_list_1[0] = np.argmin(q_value_1[0])
-                        break
-                while True:
-                    state_1_strange = state_1[5+np.argmin(q_value_1[0])] -1
-                    q_value_2 = agent_1.model.predict(state_1_strange)
-                    q_value_simple_2 = q_value_2[:4]
-                    if state_1_strange[5+np.argmin(q_value_2[0])] - 1 < 0:
-                        del q_value_simple_2[np.argmin(q_value_2[0])]
-                    else:
-                        spit_list_1[1] = np.argmin(q_value_2[0])
-                        break
-                while True:
-                    state_1_strange_strange = state_1_strange[5+np.argmin(q_value_2[0])] - 1
-                    q_value_3 = agent_1.model.predict(state_1_strange_strange)
-                    q_value_simple_3 = q_value_3[:4]
-                    if state_1_strange_strange[5+np.argmin(q_value_3[0])] -1 < 0:
-                        del q_value_simple_3[np.argmin(q_value_2[0])]
-                    else:
-                        spit_list_1[2] = np.argmin(q_value_3[0])
-                        break
-
-                action_1 = agent_1.get_action(state_1, agent_1.get_enemy_action(state_2))
-                next_state_1, reward_1, done = env.step(spit_list_1, action_1)  # TODO env에 한 액션을 받고 한 턴을 플레이 하는 함수르 만들기
-
-            next_state_1 = np.reshape(next_state_1, [1, state_size])
-            next_state_2 = np.reshape(next_state_2, [1, state_size])
+            next_state_2 = np.reshape(next_state_2 + [1], [1, state_size + 1])
 
             agent_1.append_sample(state_1, action_1, reward_1, next_state_1, done)
             agent_2.append_sample(state_2, action_2, reward_2, next_state_2, done)
@@ -301,14 +270,17 @@ if __name__ == "__main__":
             score_1 += reward_1
             score_2 += reward_2
 
-            state_1 = next_state_1
-            state_2 = next_state_2
+            state_1 = next_state_2
+
+
+            print(state_1)
+            print(state_2)
 
             if done:
-                agent_1.update_target_model() #가중치 통일
-                agent_1.update_target_model_enemy()# 가중치 통일
-                agent_2.update_target_model()# 가중치 통
-                agent_2.update_target_model_enemy() # 가중치 통일
+                agent_1.update_target_model()  # 가중치 통일
+                agent_1.update_target_model_enemy()  # 가중치 통일
+                agent_2.update_target_model()  # 가중치 통
+                agent_2.update_target_model_enemy()  # 가중치 통일
 
                 scores_2.append(score_2)
                 episodes_2.append(e)  # <-- 이 e가 뭐하는걸까 모르겟음
@@ -317,7 +289,6 @@ if __name__ == "__main__":
                 scores_1.append(score_1)
                 episodes_1.append(e)  # <-- 이 e가 뭐하는걸까 모르겟음
                 pylab.plot(episodes_1, scores_1, 'b')
-
 
                 break
                 # pylab.savefig("")    <- 그래프 저장 경로 사실 딱히 필요없음 자소서 쓸때 필요하려나
