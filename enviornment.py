@@ -93,7 +93,7 @@ class Env:
                                      'r230005',
                                      'r200005',
                                      'r300060',), ('k333530',
-                                                   'k433530',
+                                                   'k400363',
                                                    'k400070',
                                                    'k500073',
                                                    'u330335',
@@ -198,16 +198,22 @@ class Env:
         return state
 
     def state_print(self, state):
-        print("tokens:\t\t" + str(state[:6]))
-        print("my token:\t" + str(state[6:12]))
-        print("ene token:\t" + str(state[12:18]))
-        print("kp card:\t" + str(self.my_kept_card[0]) + str(self.my_kept_card[1]))
-        print("score:\t\t" + str(self.my_score))
+        print("\033[96m" + "tokens\t\t:" + str(state[:6]) + "\033[0m")
+        print("\033[96m" + "my token\t:" + str(state[6:12]) + "\033[0m")
+        print("\033[96m" + "ene token\t:" + str(state[12:18]) + "\033[0m")
+        print("\033[96m" + "kp card\t:" + str(self.my_kept_card[0]) + str(self.my_kept_card[1]) + "\033[0m")
+        print("\033[96m" + "card\t:" + str(self.my_card[0]) +
+              "/" + str(self.my_card[1]) + "\033[0m")
+        print("\033[92m" + "card_all:" + "\033[0m")
+        print(str(self.cards_now[0]))
+        print(str(self.cards_now[1]))
+        print(str(self.cards_now[2]))
+        print("\033[96m" + "score\t\t:" + str(self.my_score) + "\033[0m")
 
     # 토큰을 가져오는 함수
     # collect(가져올 토큰:int, 가져올 토큰/필수아님, 가져올 토큰/필수아님)
     def collect(self, *to_collect):
-        print(to_collect)
+        # print(to_collect)
         if len(to_collect) == 1:
             # check collectable
             if self.tokens[to_collect[0]] >= 4:
@@ -227,7 +233,7 @@ class Env:
                 for jem in to_collect:
                     self.tokens[jem] -= 1
                     self.my_token[self.turn][jem] += 1
-        print("collect")
+        print("\033[33m" + "collect" + '\033[0m')
         return True
 
     # 킵하는 함수
@@ -235,11 +241,11 @@ class Env:
     def keep(self, card):
         if len(self.my_kept_card[self.turn]) >= 3:
             return False
-        print(self.tokens[5])
+        # print(self.tokens[5])
         if self.tokens[5] > 0:
             self.tokens[5] -= 1
             self.my_token[self.turn][5] += 1
-            print(self.my_token)
+            # print(self.my_token)
         if card[1] == 5:
             self.my_kept_card[self.turn].append(self.cards_game[card[0] - 1][0])
             del self.cards_game[card[0] - 1][0]
@@ -247,7 +253,7 @@ class Env:
             self.my_kept_card[self.turn].append(self.cards_now[card[0] - 1][card[1] - 1])
             self.cards_now[card[0]][card[1] - 1] = self.cards_game[card[0] - 1][0]
             del self.cards_game[card[0] - 1][0]
-        print("keep")
+        print("\033[33m" + "keep" + '\033[0m')
         return True
 
     # 구매하는 함수
@@ -259,40 +265,50 @@ class Env:
             else:
                 if not self.price(self.my_kept_card[self.turn][card[1]]):
                     return False
+                else:
+                    del self.my_kept_card[self.turn][card[1]]
         else:
             if not self.price(self.cards_now[card[0]][card[1]]):
                 return False
-            self.cards_now[card[0]][card[1] - 1] = self.cards_game[card[0] - 1][0]
-            del self.cards_game[card[0] - 1][card[1] - 1]
-        print("buy")
+            self.cards_now[card[0]][card[1]] = self.cards_game[card[0]][0]
+            del self.cards_game[card[0]][0]
+        # print("\033[33m" + "buy" + '\033[0m')
         return True
 
     # 가격 계산 함수
     # buy 에 포함시켜도 되는데 헷갈려서 그냥 함
     def price(self, card_str):
-        ori_token = self.my_token[self.turn]
+        original_tokens = self.tokens[:]
+        ori_token = self.my_token[self.turn][:]
         for i in range(0, 5):
             price = int(card_str[i + 2]) - int(self.my_card[self.turn][i])
             if price < 0:
                 continue
             if price <= self.my_token[self.turn][i]:
                 self.my_token[self.turn][i] -= price
+                self.tokens[i] += price
             elif price <= self.my_token[self.turn][i] + self.my_token[self.turn][5]:
-                print("버릴 가능성")
                 self.my_token[self.turn][5] -= (price - self.my_token[self.turn][i])
                 self.tokens[5] += (price - self.my_token[self.turn][i])
+                self.tokens[i] += self.my_token[self.turn][i]
                 self.my_token[self.turn][i] = 0
             else:
+                # print("냥", end="")
+                self.tokens = original_tokens
                 self.my_token[self.turn] = ori_token
                 return False
         self.my_card[self.turn][self.Token[card_str[0]]] += 1
         self.my_score[self.turn] += int(card_str[1])
-
+        # print("b card" + card_str)
         return True
 
     # 판단
     def judge(self, q_value):
+        i = 0
         while True:
+            i += 1
+            if i < 10090:
+                self.step(done=True)
             if sum(list(reversed(sorted(q_value[:5])))[0:5]) < max(q_value[:5]) * 2:
                 oot = 1
                 col_value = max(q_value[:5]) * 2
@@ -304,10 +320,8 @@ class Env:
             for_value = (col_value / 3,
                          max(q_value[5:18]),
                          max(q_value[18:]))
-            # print(self.state_return(self.turn))
-            # print(for_value)
             f_ind = for_value.index(max(for_value))
-            print(f_ind)
+            # print(f_ind, end="")
             if f_ind == 0:
                 # q_value[:5].index(reversed(sorted(q_value[:5])[0]))
                 if oot == 1:
@@ -317,7 +331,7 @@ class Env:
                         oot = 3
                 if oot == 3:
                     _q_value = q_value[:5]
-                    col_li_ag = [0, 0, 0]
+                    col_li_ag = [-1, -1, -1]
                     for i in range(3):
                         col_li_ag[i] = _q_value.index(max(_q_value))
                         _q_value[_q_value.index(max(_q_value))] = min(_q_value) - 1
@@ -334,26 +348,29 @@ class Env:
                     q_value[int(np.argmax(q_value[5:18])) + 5] = min(q_value[5:18]) - 1
             elif f_ind == 2:
                 if self.keep(
-                        [int(q_value[18:].index(max(q_value[18:])) / 5), q_value[18:].index(max(q_value[18:])) % 5]):
+                        [int(q_value[18:35].index(max(q_value[18:35])) / 5), q_value[18:35].index(max(q_value[18:35])) % 5]):
                     break
                 else:
-                    q_value[q_value[18:].index(max(q_value[18:])) + 18] = min(q_value) - 1
+                    q_value[q_value[18:35].index(max(q_value[18:35])) + 18] = min(q_value) - 1
         return
 
+    def spit(self, spit):
+        t = (lambda x: 1 if x == 0 else 0)(self.turn)
+        # t = self.turn
+        for i in range(sum(self.my_token[t]) - 10):
+            self.my_token[t][spit[i]] -= 1
+            self.tokens[spit[i]] += 1
+            # print("\033[31m" + str(self.my_token[t]) + "spit" + "\033[0m")
+
     # TODO 말그대로 step
-    def step(self, spit, q_val=None, action=None):
-        done = False
+    def step(self, q_val=None, action=None, done=False):
         if not q_val is None:
             self.judge(q_val)
         else:
             # TODO q value 를 받은게 아닐때 할 수 있는 액션을 만들어야 하는데 너무 귀찮아 그냥 q value 변환함수를 하나 만드는게 빠를것같아
             pass
-        if sum(self.my_token[self.turn]) > 10:
-            for i in range(sum(self.my_token[self.turn]) - 10):
-                print(str(self.my_token[self.turn]) + "spit")
-                self.my_token[self.turn][spit[i]] = self.my_token[self.turn][spit[i]] - 1
         for score in self.my_score:
-            if score > 15 and self.turn == 1:
+            if score >= 15:
                 done = True
         for lord in self.lord_now:
             lord_list = list(lord)
@@ -367,7 +384,7 @@ class Env:
             self.turn = 1
         else:
             self.turn = 0
-        return self.state_return(_turn), self.my_score[self.turn], done
+        return self.state_return(self.turn), self.my_score[self.turn], done
 
 
 if __name__ == "__main__":

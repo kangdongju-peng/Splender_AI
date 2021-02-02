@@ -144,10 +144,9 @@ if __name__ == "__main__":
 
     env = Env()  # 환경 가저오기!
     state_size = 174  # TODO 환경에 상태의 크기를 가져오는 함수가 필요함
-    action_size = 32  # TODO 환경에 액션의 크기를 가져오는 함수가 필여
+    action_size = 36  # TODO 환경에 액션의 크기를 가져오는 함수가 필여
 
     agent_1 = DQNAgent(state_size, action_size)
-    agent_2 = DQNAgent(state_size, action_size)  # 이제부터 환경의 함수가 필요한데.,,, 내일 말조 ㅁ해보고 하자
 
     scores_1, episodes_1, scores_2, episodes_2 = [], [], [], []
 
@@ -165,46 +164,46 @@ if __name__ == "__main__":
             #    GraphicDisplay.show()  # Todo render 설정해놓으면 볼 수 있게 하는 함수야
 
             for n in range(2):
-                spit_list_1 = [0, 0, 0]
-                state_1 = env.state_return(n) + [1]
-                _state = state_1
+                spit_list_1 = [-1, -1, -1]
+                state_1 = env.state_return(env.turn) + [1]
                 state_1 = np.reshape(state_1, [1, state_size + 1])
-                _state = np.reshape(_state, [1, state_size + 1])
 
-                token_count = sum(env.my_token[env.turn])
-
-                for i in range(3):
-                    q_value_1 = list(agent_1.model.predict(_state)[0])
-                    q_value_simple_1 = q_value_1[:5]
-                    while token_count > 7:
-                        print(token_count)
-                        print(int(np.argmin(q_value_simple_1)))
-                        if _state[0, 6 + int(np.argmin(q_value_simple_1))] < 1:
-                            q_value_simple_1[int(np.argmin(q_value_simple_1))] = max(q_value_simple_1) + 1
-                        else:
-                            spit_list_1[i] = int(np.argmin(q_value_simple_1[0]))
-                            break
-                    _state[0, 6 + int(np.argmin(q_value_simple_1))] -= 1
                 action_1 = agent_1.get_action(state_1, agent_1.get_enemy_action(
                     np.reshape(env.state_return((lambda x: 0 if x == 1 else 1)(n)) + [1], [1, state_size+1])))  # 상대의 액션을 넣어서 한
-                #print(action_1)
-                next_state_1, reward_1, done = env.step(spit_list_1, list(action_1))
+                _state, reward_1, done = env.step(q_val=list(action_1))
+                _state = np.reshape(_state + [1], [1, state_size + 1])
+
+                token_count = sum(env.my_token[(lambda x: 1 if x == 0 else 0)(env.turn)])
+                for i in range(3):
+                    q_value_1 = list(agent_1.model.predict(_state)[0])
+                    q_value_simple_1 = q_value_1[:5] + q_value_1[35]
+                    j = 0
+                    while token_count > 10:
+                        # print("놈", end="")
+                        # print(int(np.argmin(q_value_simple_1)))
+                        if _state[0, 6 + int(np.argmin(q_value_simple_1))] <= 0:
+                            q_value_simple_1[int(np.argmin(q_value_simple_1))] = max(q_value_simple_1) + 1
+                        else:
+                            spit_list_1[i] = int(np.argmin(q_value_simple_1))
+                            # print(spit_list_1)
+                            _state[0, 6 + int(np.argmin(q_value_simple_1))] -= 1
+                            token_count -= 1
+                            break
+                if sum(env.my_token[(lambda x: 1 if x == 0 else 0)(env.turn)]) > 10:
+                    env.spit(spit_list_1)
+
                 score_1 += reward_1
-                agent_1.append_sample(state_1, action_1, reward_1, next_state_1, done)
-                state_1 = next_state_1
+                agent_1.append_sample(state_1, action_1, reward_1, env.state_return(n), done)
             if len(agent_1.memory) >= agent_1.train_start:
                 agent_1.train_model()
                 agent_1.train_model_enemy(agent_2.memory)
-                # if len(agent_2.memory) >= agent.train_start:    메모리 개수는 똑같아서 그냥 한 함수에 둘다 넣었어.
-                agent_2.train_model()
-                agent_2.train_model_enemy(agent_1.memory)
 
-            env.state_print(list(state_1))
+            # env.state_print(env.state_return(1))
+            print(str(env.my_score))
             if done:
+                print("\033[93m" + "#" + str(e) + " done" + "\033[0m")
                 agent_1.update_target_model()  # 가중치 통일
                 agent_1.update_target_model_enemy()  # 가중치 통일
-                agent_2.update_target_model()  # 가중치 통
-                agent_2.update_target_model_enemy()  # 가중치 통일
 
                 scores_2.append(score_2)
                 episodes_2.append(e)  # <-- 이 e가 뭐하는걸까 모르겟음
