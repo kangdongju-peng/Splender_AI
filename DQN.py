@@ -12,7 +12,7 @@ import torch
 from enviornment import Env
 import gym
 
-EPISODES = 300  # 판수 ㅋ
+EPISODES = 1000  # 판수 ㅋ
 
 
 class DQNAgent:
@@ -25,7 +25,7 @@ class DQNAgent:
         self.epsilon = 1.0  # e-탐욕 정책사용, 탐험률 일단 1.0 설정
         self.epsilon_min = 0.01  # 탐험률의 최소 값 정의
         self.epsilon_decay = 0.999  # 탐험률의 감소값 일단 0.999로 설정
-        self.train_start = 1000  # 학습을 시작하는 판수
+        self.train_start = 1000  # 학습을 시작하는 메모리수
         self.learning_rate = 0.001  # 인공신경망에 사용되는 학습
 
         self.state_size = state_size  # 인공지능망의 인풋 개수, 상태의 갯수랍니
@@ -43,8 +43,8 @@ class DQNAgent:
         self.update_target_model()  # 가중치 동기화 함수
         self.update_target_model_enemy()  # 가중치 동기화 합수
 
-    #       if self.load_model(): TODO 가중치 불러오긴가 뭔가 그거 해놓기 주소 만들
-    #          self.model.load_weights("./save_model/cartpole_dqn_trained.h5") ## 일단 책에 중요해 보여서 썼는데, 뭔 코든지 해석좀
+        if self.load_model:
+            self.model.load_weights("model.h5") ## 일단 책에 중요해 보여서 썼는데, 뭔 코든지 해석좀
 
     def build_agent_model(self):  # 행동을 결정하는 인공신경망
         model = Sequential()
@@ -78,13 +78,15 @@ class DQNAgent:
                 return_list.append(random.random())
             return return_list  # 탐험률
         else:
+            del state[self.state_size - 1]
             state.append(enemy_action)  # 상태에 상대방 예상 행동도 추가해서 인공신경망에 넣기
+            state = np.reshape(state, [1, state_size + 1])
             q_value = self.model.predict(state)
             return list(q_value[0])
 
     def get_enemy_action(self, enemy_state):  # 에네미의 예상행동을 반환하는 함수, 탐험 없고 상대 행동받는것 없음
         q_value = self.model.predict(enemy_state)
-        return int(np.argmax(q_value[0]))
+        return list(q_value[0]).index(max(q_value[0]))
 
     def append_sample(self, state, action, reward, next_state, done):  # 학습샘플을 메모리에 저장하는 함수
         self.memory.append((state, action, reward, next_state, done))
@@ -95,31 +97,36 @@ class DQNAgent:
 
         mini_batch = random.sample(self.memory, self.batch_size)  # 메모리에서 랜덤으로 배치 사이즈많큼 샘플을 뽑아옴
 
-        states = np.zeros((self.batch_size, self.state_size))  # 세로열이 batch_size, state_size 가로열 개수인 0으로 도배된 배열 생성
-        next_states = np.zeros((self.batch_size, self.state_size))
+        states = np.zeros((self.batch_size, self.state_size + 1))  # 세로열이 batch_size, state_size 가로열 개수인 0으로 도배된 배열 생성
+        next_states = np.zeros((self.batch_size, self.state_size + 1))
 
         actions, rewards, dones = [], [], []
         for i in range(self.batch_size):
             states[i] = mini_batch[i][0]
             actions.append(mini_batch[i][1])  # 모든 변수에 샘플을 정리
             rewards.append(mini_batch[i][2])
-            next_states[i] = mini_batch[i][3]
+            next_states[i] = mini_batch[i][3] + [1]
             dones.append(mini_batch[i][4])
 
-        target = self.model.predict(states)
-        target_val = self.target_model.predict(next_states)
+        target = list(self.model.predict(states))
+        target_val = list(self.target_model.predict(next_states))
         for i in range(self.batch_size):
-            if done[i]:
-                target[i][actions[i]] = rewards[i]  # 벨만기대방정식을 이용해서 인공신경망 업데이
+            _target = list(target[i])
+            if dones[i]:
+                _target[int(np.argmax(actions[i]))] = rewards[i]  # 벨만기대방정식을 이용해서 인공신경망 업데이
+
             else:
-                target[i][actions[i]] = rewards[i] + self.discount_factor * (
-                    np.amax(target_val[i]))
-        self.model.fit(states, target, batch_size=self.batch_size, epochs=1, verbose=0)
+                _target[int(np.argmax(actions[i]))] = rewards[i] + self.discount_factor * (np.amax(target_val[i]))
+            target[i] = _target
+            self.model.fit(np.reshape(states[i], [1, len(states[i])]), np.reshape(target[i], [1, len(target[i])]),
+                           batch_size=self.batch_size, epochs=1, verbose=0)
 
     def train_model_enemy(self, memory):  # 적의 메모리를 인수로 받아 학습
-        mini_batch = random.sample(memory, self.batch_size)  # 상대 메모리에서 샘플 추출
+        return
 
-        states = np.zeros((self.batch_size, self.state_size))  # 세로열이 batch_size, state_size 가로열 개수인 0으로 도배된 배열 생성
+        mini_batch = random.sample(memory, self.batch_size + 1)  # 상대 메모리에서 샘플 추출
+
+        states = np.zeros((self.batch_size, self.state_size + 1))  # 세로열이 batch_size, state_size 가로열 개수인 0으로 도배된 배열 생성
         next_states = np.zeros((self.batch_size, self.state_size))
 
         actions, rewards, dones = [], [], []
@@ -166,11 +173,13 @@ if __name__ == "__main__":
             for n in range(2):
                 spit_list_1 = [-1, -1, -1]
                 state_1 = env.state_return(env.turn) + [1]
-                state_1 = np.reshape(state_1, [1, state_size + 1])
 
                 action_1 = agent_1.get_action(state_1, agent_1.get_enemy_action(
-                    np.reshape(env.state_return((lambda x: 0 if x == 1 else 1)(n)) + [1], [1, state_size+1])))  # 상대의 액션을 넣어서 한
+                    np.reshape(env.state_return((lambda x: 0 if x == 1 else 1)(n)) + [1],
+                               [1, state_size + 1])))  # 상대의 액션을 넣어서 한
                 _state, reward_1, done = env.step(q_val=list(action_1))
+                if done:
+                    break
                 _state = np.reshape(_state + [1], [1, state_size + 1])
 
                 token_count = sum(env.my_token[(lambda x: 1 if x == 0 else 0)(env.turn)])
@@ -179,7 +188,6 @@ if __name__ == "__main__":
                     q_value_simple_1 = q_value_1[:5] + q_value_1[35]
                     j = 0
                     while token_count > 10:
-                        # print("놈", end="")
                         # print(int(np.argmin(q_value_simple_1)))
                         if _state[0, 6 + int(np.argmin(q_value_simple_1))] <= 0:
                             q_value_simple_1[int(np.argmin(q_value_simple_1))] = max(q_value_simple_1) + 1
@@ -196,12 +204,14 @@ if __name__ == "__main__":
                 agent_1.append_sample(state_1, action_1, reward_1, env.state_return(n), done)
             if len(agent_1.memory) >= agent_1.train_start:
                 agent_1.train_model()
-                agent_1.train_model_enemy(agent_2.memory)
+                agent_1.train_model_enemy(agent_1.memory)
 
             # env.state_print(env.state_return(1))
-            print(str(env.my_score))
+            # print(str(env.my_score))
             if done:
-                print("\033[93m" + "#" + str(e) + " done" + "\033[0m")
+                print("\033[93m" + "#" + str(e) + " done " + "\033[0m",
+                      "\033[95m" + str(env.my_score) + "\033[0m")
+                env.state_print(env.state_return(0))
                 agent_1.update_target_model()  # 가중치 통일
                 agent_1.update_target_model_enemy()  # 가중치 통일
 
@@ -213,10 +223,16 @@ if __name__ == "__main__":
                 episodes_1.append(e)  # <-- 이 e가 뭐하는걸까 모르겟음
                 pylab.plot(episodes_1, scores_1, 'b')
 
-                break
-                # pylab.savefig("")    <- 그래프 저장 경로 사실 딱히 필요없음 자소서 쓸때 필요하려나
+                if e % 15 == 0:
+                    model_json = agent_1.model.to_json()
+                    with open("model.json", "w") as json_file:
+                        json_file.write(model_json)
+                    agent_1.model.save_weights("model.h5")
+                    print("saved model")
+
                 if np.mean(scores_2[-min(10, len(scores_2)):]) > 14:  # 이전 에피소드 점수 평균이 100넘으면 탈출 (학습)
-                    # agent.model.save_weights() <-- 이괄호 안에는 학습 데으터를 넣을 경로가 필요한데 아직 못정함
                     sys.exit()
                     # 아래있는거 그래프 + 가중치 동기화
                     # 그래프 + 가중치 기화
+                break
+                # pylab.savefig("")    <- 그래프 저장 경로 사실 딱히 필요없음 자소서 쓸때 필요하려나

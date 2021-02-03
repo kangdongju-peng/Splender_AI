@@ -13,6 +13,10 @@ class Env:
     cards_game: List[List[Any]]
 
     def __init__(self):
+        self.original_score = []
+        self.dkssud2 = 0
+        self.dkssud = 0
+
         self.turn = 0
         self.lords = ('340004',
                       '344000',
@@ -233,12 +237,14 @@ class Env:
                 for jem in to_collect:
                     self.tokens[jem] -= 1
                     self.my_token[self.turn][jem] += 1
-        print("\033[33m" + "collect" + '\033[0m')
+        # print("\033[33m" + "collect" + '\033[0m')
         return True
 
     # 킵하는 함수
     # ** card 는 [n, m]형태의 리스트로 n = 티어 m = 번째 / 5번째 = 뒷면
     def keep(self, card):
+        card[0] -= 1
+        card[1] -= 1
         if len(self.my_kept_card[self.turn]) >= 3:
             return False
         # print(self.tokens[5])
@@ -246,14 +252,17 @@ class Env:
             self.tokens[5] -= 1
             self.my_token[self.turn][5] += 1
             # print(self.my_token)
-        if card[1] == 5:
-            self.my_kept_card[self.turn].append(self.cards_game[card[0] - 1][0])
-            del self.cards_game[card[0] - 1][0]
+        if card[1] == 4:
+            self.my_kept_card[self.turn].append(self.cards_game[card[0]][0])
+            del self.cards_game[card[0]][0]
         else:
-            self.my_kept_card[self.turn].append(self.cards_now[card[0] - 1][card[1] - 1])
-            self.cards_now[card[0]][card[1] - 1] = self.cards_game[card[0] - 1][0]
-            del self.cards_game[card[0] - 1][0]
-        print("\033[33m" + "keep" + '\033[0m')
+            self.my_kept_card[self.turn].append(self.cards_now[card[0]][card[1]])
+            if len(self.cards_game[card[0]]) <= 0:
+                self.cards_now[card[0]][card[1]] = 'w0000000'
+            else:
+                self.cards_now[card[0]][card[1]] = self.cards_game[card[0]][0]
+                del self.cards_game[card[0]][0]
+        # print("\033[33m" + "keep" + '\033[0m')
         return True
 
     # 구매하는 함수
@@ -268,10 +277,15 @@ class Env:
                 else:
                     del self.my_kept_card[self.turn][card[1]]
         else:
+            if self.cards_now[card[0]][card[1]] == 'w0000000':
+                return False
             if not self.price(self.cards_now[card[0]][card[1]]):
                 return False
-            self.cards_now[card[0]][card[1]] = self.cards_game[card[0]][0]
-            del self.cards_game[card[0]][0]
+            if len(self.cards_game[card[0]]) <= 0:
+                self.cards_now[card[0]][card[1]] = 'w0000000'
+            else:
+                self.cards_now[card[0]][card[1]] = self.cards_game[card[0]][0]
+                del self.cards_game[card[0]][0]
         # print("\033[33m" + "buy" + '\033[0m')
         return True
 
@@ -307,8 +321,8 @@ class Env:
         i = 0
         while True:
             i += 1
-            if i < 10090:
-                self.step(done=True)
+            if i > 100:
+                break
             if sum(list(reversed(sorted(q_value[:5])))[0:5]) < max(q_value[:5]) * 2:
                 oot = 1
                 col_value = max(q_value[:5]) * 2
@@ -316,7 +330,7 @@ class Env:
                 oot = 3
                 col_value = reduce(lambda x, y: x + y, list(reversed(sorted(q_value[:5])))[0:5])
             if len(list(filter(lambda x: self.tokens[x] > 0, [0, 1, 2, 3, 4]))) == 0:
-                col_value = 3 * (min(q_value) - 1)
+                col_value = 3 * (min(q_value) - 3)
             for_value = (col_value / 3,
                          max(q_value[5:18]),
                          max(q_value[18:]))
@@ -348,7 +362,8 @@ class Env:
                     q_value[int(np.argmax(q_value[5:18])) + 5] = min(q_value[5:18]) - 1
             elif f_ind == 2:
                 if self.keep(
-                        [int(q_value[18:35].index(max(q_value[18:35])) / 5), q_value[18:35].index(max(q_value[18:35])) % 5]):
+                        [int(q_value[18:35].index(max(q_value[18:35])) / 5),
+                         q_value[18:35].index(max(q_value[18:35])) % 5]):
                     break
                 else:
                     q_value[q_value[18:35].index(max(q_value[18:35])) + 18] = min(q_value) - 1
@@ -370,8 +385,11 @@ class Env:
             # TODO q value 를 받은게 아닐때 할 수 있는 액션을 만들어야 하는데 너무 귀찮아 그냥 q value 변환함수를 하나 만드는게 빠를것같아
             pass
         for score in self.my_score:
-            if score >= 15:
+            if score >= 15 and self.turn == 1:
                 done = True
+                print(str(self.dkssud2 * 10 + self.dkssud))
+                self.dkssud = 0
+                self.dkssud2 = 0
         for lord in self.lord_now:
             lord_list = list(lord)
             del lord_list[0]
@@ -384,7 +402,22 @@ class Env:
             self.turn = 1
         else:
             self.turn = 0
-        return self.state_return(self.turn), self.my_score[self.turn], done
+
+        self.original_score = self.my_score[:]
+        if self.turn == 1:
+            if self.dkssud >= 10:
+                # print(self.my_score)
+                self.dkssud = 0
+                self.dkssud2 += 1
+            else:
+                self.dkssud += 1
+                # print(self.my_score, end="\t")
+            if self.dkssud2 >= 10:
+                self.dkssud2 = 0
+                self.dkssud = 0
+                done = True
+        return self.state_return(self.turn), 1.5 * (self.my_score[_turn] - self.original_score[_turn]) \
+               - 0.4 * (self.dkssud + 10 * self.dkssud2 + 1), done
 
 
 if __name__ == "__main__":
